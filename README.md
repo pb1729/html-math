@@ -41,7 +41,7 @@ Greek alphabet:
 
 Useful symbols:
 ∑   -- sum
-⅀       -- fancy sum
+⅀    -- fancy sum
 ∏   -- product
 ∫   -- integral
 
