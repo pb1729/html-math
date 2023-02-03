@@ -45,6 +45,7 @@ class ListMath(BaseMath):
     def to_raw(self):
         return ''.join([math.to_raw() for math in self.maths])
     def est_height(self):
+        if len(self.maths) == 0: return 0.01
         return max(math.est_height() for math in self.maths)
     def add(self, x):
         self.maths.append(x)

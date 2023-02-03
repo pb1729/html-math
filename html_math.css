@@ -1,7 +1,15 @@
 
+div.math-p {
+    display: inline-flex;
+    align-items: center;
+    white-space: pre;
+    padding-top: 0.2em;
+    padding-bottom: 0.2em;
+    width: 100%;
+}
+
 span.math-formula-root {
     padding: 4px;
-    margin: -4px;
     background-color: #efe8e0;
 }
 
