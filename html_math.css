@@ -1,4 +1,8 @@
 
+body {
+    font-size: 100%;
+}
+
 div.math-p {
     align-items: center;
     /* https://stackoverflow.com/a/248013 */
@@ -26,6 +30,7 @@ table.math-table {
     border: 0;
     padding: 0;
     margin: 0;
+    font-size: 1em;
 }
 
 table.math-table > tbody > tr {
