@@ -1,3 +1,4 @@
+import unicodedata
 
 # Constants
 GREEK_LETTERS = set(list('ΑαΒβΓγΔδΕεΖζΗηΘθΙιΚκΛλΜμΝνΞξΟοΠπΡρΣσςΤτΥυΦφΧχΨψΩω'))
@@ -16,6 +17,35 @@ SIZE_MULTIPLIERS = {
     MATH_SS: 0.67,
 }
 
+LATEX_SYMBOL_TABLE = {
+    "¬": "neg",
+    "⊺": "top",
+    "⟂": "bot",
+    "∨": "lor",
+    "∧": "land",
+    "⇒": "implies",
+    "⇔": "iff",
+    "☐": "Box",
+    "∇": "nabla",
+    "ℝ": "mathbb{R}",
+    "𝓛": "mathcal{L}",
+    "→": "to",
+    "≤": "leq",
+    "≥": "geq",
+}
+
+def greek_letter_to_latex(letter):
+    words = unicodedata.name(letter).split(" ")
+    ans = words[-1].casefold()
+    if "CAPITAL" in words:
+        return words[-1][0] + ans[1:]
+    else:
+        return ans
+LATEX_GREEK_LETTER_TABLE = {}
+for letter in GREEK_LETTERS:
+    LATEX_GREEK_LETTER_TABLE[letter] = greek_letter_to_latex(letter)
+
+
 def html_escape(s):
     return (s
         .replace('&', '&amp;')
@@ -23,6 +53,7 @@ def html_escape(s):
         .replace('>', '&gt;')
         .replace(' ', '&nbsp;')
     )
+
 
 def html_tag(tag, classes, content, attribs=''):
     class_list = ' '.join(classes)
@@ -32,6 +63,8 @@ class BaseMath:
     ''' Base class for representing math. '''
     def to_raw(self):
         return '<b>&nbsp;UNIMPLEMENTED&nbsp;</b>'
+    def to_latex(self):
+        return '\\text{ UNIMPLEMENTED }'
     def est_height(self):
         return 1.
 
@@ -44,6 +77,8 @@ class ListMath(BaseMath):
             self.maths = []
     def to_raw(self):
         return ''.join([math.to_raw() for math in self.maths])
+    def to_latex(self):
+        return ''.join([math.to_latex() for math in self.maths])
     def est_height(self):
         if len(self.maths) == 0: return 0.01
         return max(math.est_height() for math in self.maths)
@@ -54,6 +89,8 @@ class ArrayMath(ListMath):
     ''' Array of math data, mainly intended for consumption by functions rather than direct use. '''
     def to_raw(self):
         return '[%s]' % (', '.join([math.to_raw() for math in self.maths]))
+    def to_latex(self):
+        return '\\left[%s\\right]' % (', '.join([math.to_latex() for math in self.maths]))
 
 class RootFormulaMath(BaseMath):
     ''' Top level class that is the root holding an entire formula. '''
@@ -61,6 +98,8 @@ class RootFormulaMath(BaseMath):
         self.math = math
     def to_raw(self):
         return html_tag('span', [MATH_FORMULA_ROOT, MATH_FORMULA], self.math.to_raw())
+    def to_latex(self):
+        return self.math.to_latex()
     def est_height(self):
         return self.math.est_height()
 
@@ -75,6 +114,11 @@ class VariableMath(BaseMath):
         if self.b: ans = '<b>%s</b>' % ans
         if self.i: ans = '<i>%s</i>' % ans
         return ans
+    def to_latex(self):
+        if self.varnm in LATEX_GREEK_LETTER_TABLE:
+            return "\\%s " % LATEX_GREEK_LETTER_TABLE[self.varnm]
+        if self.b: return "\\mathbf{%s}" % self.varnm
+        return self.varnm
 
 class RegularMath(BaseMath):
     ''' Math data that consists of some other symbol that isn't a variable. '''
@@ -82,6 +126,13 @@ class RegularMath(BaseMath):
         self.symb = symb
     def to_raw(self):
         return html_escape(self.symb)
+    def to_latex(self):
+        if self.symb in LATEX_SYMBOL_TABLE:
+            return "\\%s " % LATEX_SYMBOL_TABLE[self.symb]
+        elif all([is_variable(c) for c in self.symb]):
+            return "\\text{%s}" % self.symb
+        else:
+            return self.symb
 
 class TableMath(BaseMath):
     ''' Represents a wide variety of possible notations, matrices, fractions, super/sub-scripts, etc. '''
@@ -98,6 +149,27 @@ class TableMath(BaseMath):
                 ans.append('</td>')
             ans.append('</tr>')
         return html_tag('table', self.classes, ''.join(ans))
+    def to_latex(self):
+        def is_empty(math):
+            return isinstance(math, RegularMath) and math.symb == " "
+        if MATH_SS in self.classes:
+            ans = ""
+            sup = self.rows[0][0]
+            sub = self.rows[1][0]
+            if not is_empty(sup):
+                ans += "^{%s}" % sup.to_latex()
+            if not is_empty(sub):
+                ans += "_{%s}" % sub.to_latex()
+            return ans
+        elif MATH_FRACTION in self.classes:
+            return "\\frac{%s}{%s}" % (self.rows[0][0].to_latex(), self.rows[1][0].to_latex())
+        else: # make a table
+            ans = ["\\begin{pmatrix}"] # for now only pmatrix is supported :/
+            for i, row in enumerate(self.rows):
+                ans.append(" & ".join([elem.to_latex() for elem in row]))
+                ans.append(" \\\\")
+            ans.append("\\end{pmatrix}")
+            return "".join(ans)
     def est_height(self):
         multiplier = 1.
         for cls in self.classes:
@@ -117,6 +189,8 @@ class ScaleMath(BaseMath):
         percent_scale = int(100 * self.scale)
         style_str = ' style="font-size:%d%s;"' % (percent_scale, '%')
         return html_tag('span', [MATH_FORMULA], self.math.to_raw(), style_str)
+    def to_latex(self): # do nothing
+        return self.math.to_latex()
     def est_height(self):
         return self.scale * self.math.est_height()
 
@@ -217,6 +291,9 @@ class CallMath(BaseMath):
     def to_raw(self):
         self.compute_result()
         return self.result.to_raw()
+    def to_latex(self):
+        self.compute_result()
+        return self.result.to_latex()
     def est_height(self):
         self.compute_result()
         return self.result.est_height()
@@ -284,4 +361,6 @@ def parse(s, arglist=None, depth=0):
 def html_math(s):
     return parse(s).to_raw()
 
+def latex_math(s):
+    return parse(s).to_latex()
 

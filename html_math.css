@@ -18,6 +18,7 @@ div.math-p {
 span.math-formula-root {
     padding: 4px;
     background-color: #efe8e0;
+    white-space: nowrap;
 }
 
 span.math-formula {
