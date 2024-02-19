@@ -10,11 +10,13 @@ MATH_MATRIX = 'math-matrix'
 MATH_BOX_MATRIX = 'math-box-matrix'
 MATH_FRACTION = 'math-fraction'
 MATH_SS = 'math-ss'
+MATH_NARY = 'math-nary'
 
 SIZE_MULTIPLIERS = {
     # Note: These should be kept consistent with the definitions in html_math.css!
     MATH_FRACTION: 0.75,
     MATH_SS: 0.67,
+    MATH_NARY: 0.67,
 }
 
 LATEX_SYMBOL_TABLE = {
@@ -32,6 +34,16 @@ LATEX_SYMBOL_TABLE = {
     "→": "to",
     "≤": "leq",
     "≥": "geq",
+    "⟨": "langle",
+    "⟩": "rangle",
+    "~": "sim",
+}
+
+LATEX_NARY_SYMBOL_TABLE = {
+    "∑": "sum",
+    "∏": "prod",
+    "∫": "int",
+    # more here if needed: http://xahlee.info/comp/unicode_math_operators.html
 }
 
 def greek_letter_to_latex(letter):
@@ -129,6 +141,8 @@ class RegularMath(BaseMath):
     def to_latex(self):
         if self.symb in LATEX_SYMBOL_TABLE:
             return "\\%s " % LATEX_SYMBOL_TABLE[self.symb]
+        elif self.symb in LATEX_NARY_SYMBOL_TABLE:
+            return "\\%s " % LATEX_NARY_SYMBOL_TABLE[self.symb]
         elif all([is_variable(c) for c in self.symb]):
             return "\\text{%s}" % self.symb
         else:
@@ -152,6 +166,16 @@ class TableMath(BaseMath):
     def to_latex(self):
         def is_empty(math):
             return isinstance(math, RegularMath) and math.symb == " "
+        if MATH_NARY in self.classes:
+            rows = [row[0] for row in self.rows]
+            if len(rows) == 1:   sup, symb, sub = None, *rows, None
+            elif len(rows) == 2: sup, symb, sub = None, *rows
+            elif len(rows) == 3: sup, symb, sub = rows
+            else: raise ValueError("unsupported n-ary number of rows")
+            ans = symb.to_latex()
+            if sub is not None: ans += "_{%s}" % sub.to_latex()
+            if sup is not None: ans += "^{%s}" % sup.to_latex()
+            return ans
         if MATH_SS in self.classes:
             ans = ""
             sup = self.rows[0][0]
@@ -258,7 +282,7 @@ def n_ary(symb, lower=None, upper=None):
     contents = [[ScaleMath(symb, 2.4)]]
     if lower is not None: contents = contents + [[lower]]
     if upper is not None: contents = [[upper]] + contents
-    return TableMath(contents, MATH_SS)
+    return TableMath(contents, MATH_NARY)
 
 fn_table = {
     'tab': table,

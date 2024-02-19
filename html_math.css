@@ -62,6 +62,12 @@ table.math-ss {
     border-collapse: collapse;
 }
 
+table.math-nary {
+    font-size: 67%;
+    border-spacing: 0;
+    border-collapse: collapse;
+}
+
 table.math-fraction {
     font-size: 75%;
     margin: 1px;
