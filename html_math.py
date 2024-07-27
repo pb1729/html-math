@@ -48,7 +48,7 @@ LATEX_NARY_SYMBOL_TABLE = {
 
 def greek_letter_to_latex(letter):
     words = unicodedata.name(letter).split(" ")
-    ans = words[-1].casefold()
+    ans = words[-1].casefold().replace("lamda", "lambda")
     if "CAPITAL" in words:
         return words[-1][0] + ans[1:]
     else:
